@@ -21,6 +21,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -183,8 +185,10 @@ fun MainScreen(viewModel: MainViewModel, modifier: Modifier = Modifier) {
             }
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.SpaceBetween
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.Top
         ) {
             // 1. Top Panel / Header in Clean Minimalism style
             Column(
@@ -307,11 +311,11 @@ fun MainScreen(viewModel: MainViewModel, modifier: Modifier = Modifier) {
                 }
             }
 
-            // 2. Control Grid Area - perfectly centered in the negative space
+            // 2. Control Grid Area - beautifully padded in the scroll area
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f),
+                    .padding(vertical = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 ControlGrid3x3(
@@ -332,7 +336,7 @@ fun MainScreen(viewModel: MainViewModel, modifier: Modifier = Modifier) {
                         BorderStroke(1.dp, Color(0x0DFFFFFF)),
                         RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
                     )
-                    .padding(24.dp)
+                    .padding(horizontal = 24.dp, vertical = 24.dp)
             ) {
                 // Mode Toggle Pill
                 Row(
@@ -467,7 +471,7 @@ fun MainScreen(viewModel: MainViewModel, modifier: Modifier = Modifier) {
                     Text("RIGHT (50)", color = Color(0x33FFFFFF), fontSize = 10.sp, fontFamily = FontFamily.Monospace)
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 // Save Presets Button
                 Button(
