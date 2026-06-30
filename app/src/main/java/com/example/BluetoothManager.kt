@@ -78,7 +78,12 @@ class ESP32BluetoothManager(private val context: Context) {
      */
     fun getPairedDevices(): List<BluetoothDevice> {
         if (!hasRequiredPermissions()) return emptyList()
-        return bluetoothAdapter?.bondedDevices?.toList() ?: emptyList()
+        return try {
+            bluetoothAdapter?.bondedDevices?.toList() ?: emptyList()
+        } catch (e: SecurityException) {
+            Log.e(TAG, "SecurityException reading bonded devices", e)
+            emptyList()
+        }
     }
 
     /**
@@ -99,13 +104,26 @@ class ESP32BluetoothManager(private val context: Context) {
             _connectionState.value = ConnectionState.CONNECTING
             _connectedDeviceName.value = null
             
-            val device = bluetoothAdapter.getRemoteDevice(deviceAddress)
-            val deviceName = device.name ?: deviceAddress
-
+            var deviceName = deviceAddress
             try {
+                val device = bluetoothAdapter.getRemoteDevice(deviceAddress)
+                try {
+                    deviceName = device.name ?: deviceAddress
+                } catch (se: SecurityException) {
+                    Log.w(TAG, "Could not get device name due to missing permission", se)
+                }
+
                 withContext(Dispatchers.IO) {
                     // Cancel discovery if running, to avoid slowing down connection
-                    bluetoothAdapter.cancelDiscovery()
+                    try {
+                        if (bluetoothAdapter.isDiscovering) {
+                            bluetoothAdapter.cancelDiscovery()
+                        }
+                    } catch (se: SecurityException) {
+                        Log.w(TAG, "Could not cancel discovery due to missing permission", se)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Error checking/cancelling discovery", e)
+                    }
 
                     // Create RFCOMM Socket using standard SPP UUID
                     val socket = device.createRfcommSocketToServiceRecord(sppUuid)
@@ -126,6 +144,16 @@ class ESP32BluetoothManager(private val context: Context) {
                 closeConnection()
                 _connectionState.value = ConnectionState.DISCONNECTED
                 onResult(false, "Failed to connect to $deviceName: ${e.localizedMessage}")
+            } catch (e: SecurityException) {
+                Log.e(TAG, "SecurityException during connection", e)
+                closeConnection()
+                _connectionState.value = ConnectionState.DISCONNECTED
+                onResult(false, "Bluetooth permission error: ${e.localizedMessage}. Please grant Bluetooth permissions in Android Settings.")
+            } catch (e: Exception) {
+                Log.e(TAG, "Unexpected connection error", e)
+                closeConnection()
+                _connectionState.value = ConnectionState.DISCONNECTED
+                onResult(false, "Error: ${e.localizedMessage}")
             }
         }
     }

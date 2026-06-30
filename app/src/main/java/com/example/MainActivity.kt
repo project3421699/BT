@@ -114,11 +114,12 @@ fun MainScreen(viewModel: MainViewModel, modifier: Modifier = Modifier) {
     val cmdRight by viewModel.cmdRight.collectAsState()
     val cmdStop by viewModel.cmdStop.collectAsState()
 
-    // Permission launcher for Bluetooth Connect (Android 12+)
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
+    // Permission launcher for Bluetooth permissions (Android 12+)
+    val permissionsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val connectGranted = permissions[Manifest.permission.BLUETOOTH_CONNECT] ?: false
+        if (connectGranted) {
             viewModel.openDevicePicker()
         } else {
             Toast.makeText(context, "Bluetooth connection permission is required.", Toast.LENGTH_LONG).show()
@@ -127,10 +128,18 @@ fun MainScreen(viewModel: MainViewModel, modifier: Modifier = Modifier) {
 
     val onConnectClick = {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+            val hasConnect = ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+            val hasScan = ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED
+            
+            if (hasConnect && hasScan) {
                 viewModel.openDevicePicker()
             } else {
-                permissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+                permissionsLauncher.launch(
+                    arrayOf(
+                        Manifest.permission.BLUETOOTH_CONNECT,
+                        Manifest.permission.BLUETOOTH_SCAN
+                    )
+                )
             }
         } else {
             viewModel.openDevicePicker()
