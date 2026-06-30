@@ -2,6 +2,7 @@ package com.example
 
 import android.bluetooth.BluetoothDevice
 import android.content.Context
+import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,21 +21,35 @@ enum class DriveMode(val label: String, val description: String) {
     )
 }
 
-class MainViewModel(context: Context) : ViewModel() {
+class MainViewModel(private val context: Context) : ViewModel() {
+
+    // Button Configuration Persistence using SharedPreferences
+    private val sharedPrefs = context.getSharedPreferences("rc_controller_prefs", Context.MODE_PRIVATE)
 
     val bluetoothManager = ESP32BluetoothManager(context)
 
-    // Drive Mode configuration
-    private val _driveMode = MutableStateFlow(DriveMode.CLICK_TOGGLE)
+    // Drive Mode configuration loaded from presets
+    private val _driveMode = MutableStateFlow(
+        try {
+            val modeStr = sharedPrefs.getString("preset_drive_mode", DriveMode.CLICK_TOGGLE.name)
+            DriveMode.valueOf(modeStr ?: DriveMode.CLICK_TOGGLE.name)
+        } catch (e: Exception) {
+            DriveMode.CLICK_TOGGLE
+        }
+    )
     val driveMode: StateFlow<DriveMode> = _driveMode.asStateFlow()
 
     // Current active movement command ("F", "B", "L", "R", "S" or null)
     private val _activeMovement = MutableStateFlow("S")
     val activeMovement: StateFlow<String> = _activeMovement.asStateFlow()
 
-    // Current speed value (100 to 255)
-    private val _currentSpeed = MutableStateFlow(200)
+    // Current speed value loaded from presets (100 to 255)
+    private val _currentSpeed = MutableStateFlow(sharedPrefs.getInt("preset_current_speed", 200))
     val currentSpeed: StateFlow<Int> = _currentSpeed.asStateFlow()
+
+    // Steering Trim value loaded from presets (-50 to 50, default 0)
+    private val _steeringTrim = MutableStateFlow(sharedPrefs.getInt("preset_steering_trim", 0))
+    val steeringTrim: StateFlow<Int> = _steeringTrim.asStateFlow()
 
     // Error messages
     private val _errorMessage = MutableStateFlow<String?>(null)
@@ -47,9 +62,6 @@ class MainViewModel(context: Context) : ViewModel() {
     // List of paired devices
     private val _pairedDevices = MutableStateFlow<List<BluetoothDevice>>(emptyList())
     val pairedDevices: StateFlow<List<BluetoothDevice>> = _pairedDevices.asStateFlow()
-
-    // Button Configuration Persistence using SharedPreferences
-    private val sharedPrefs = context.getSharedPreferences("rc_controller_prefs", Context.MODE_PRIVATE)
 
     private val _cmdForward = MutableStateFlow(sharedPrefs.getString("cmd_forward", "F") ?: "F")
     val cmdForward: StateFlow<String> = _cmdForward.asStateFlow()
@@ -88,6 +100,25 @@ class MainViewModel(context: Context) : ViewModel() {
             // Send new speed over Bluetooth
             bluetoothManager.sendCommand(clampedSpeed.toString())
         }
+    }
+
+    fun updateSteeringTrim(newTrim: Int) {
+        val clampedTrim = newTrim.coerceIn(-50, 50)
+        if (_steeringTrim.value != clampedTrim) {
+            _steeringTrim.value = clampedTrim
+            // Send new steering trim over Bluetooth with prefix "B:"
+            bluetoothManager.sendCommand("B:$clampedTrim")
+        }
+    }
+
+    fun savePresets() {
+        sharedPrefs.edit().apply {
+            putInt("preset_current_speed", _currentSpeed.value)
+            putInt("preset_steering_trim", _steeringTrim.value)
+            putString("preset_drive_mode", _driveMode.value.name)
+            apply()
+        }
+        Toast.makeText(context, "Presets saved successfully!", Toast.LENGTH_SHORT).show()
     }
 
     fun refreshPairedDevices() {

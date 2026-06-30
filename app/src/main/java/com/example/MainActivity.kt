@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.BluetoothConnected
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -103,6 +104,7 @@ fun MainScreen(viewModel: MainViewModel, modifier: Modifier = Modifier) {
     val driveMode by viewModel.driveMode.collectAsState()
     val activeMovement by viewModel.activeMovement.collectAsState()
     val currentSpeed by viewModel.currentSpeed.collectAsState()
+    val steeringTrim by viewModel.steeringTrim.collectAsState()
     val isDevicePickerOpen by viewModel.isDevicePickerOpen.collectAsState()
     val pairedDevices by viewModel.pairedDevices.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
@@ -415,6 +417,93 @@ fun MainScreen(viewModel: MainViewModel, modifier: Modifier = Modifier) {
 
                 Spacer(modifier = Modifier.height(20.dp))
 
+                // Steering Trim Slider Layout
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Text(
+                        text = "⚖️ STEERING BALANCE / TRIM",
+                        color = Color(0x66FFFFFF),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    )
+                    Text(
+                        text = if (steeringTrim > 0) "+$steeringTrim" else "$steeringTrim",
+                        color = TechCyan,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Clean Modern Trim Slider
+                Slider(
+                    value = steeringTrim.toFloat(),
+                    onValueChange = { viewModel.updateSteeringTrim(it.toInt()) },
+                    valueRange = -50f..50f,
+                    colors = SliderDefaults.colors(
+                        thumbColor = White,
+                        activeTrackColor = TechCyan,
+                        inactiveTrackColor = DarkBg,
+                        activeTickColor = Color.Transparent,
+                        inactiveTickColor = Color.Transparent
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("trim_slider")
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("LEFT (-50)", color = Color(0x33FFFFFF), fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+                    Text("CENTER (0)", color = Color(0x33FFFFFF), fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+                    Text("RIGHT (50)", color = Color(0x33FFFFFF), fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Save Presets Button
+                Button(
+                    onClick = { viewModel.savePresets() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp)
+                        .testTag("save_presets_button"),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF2A2A3A),
+                        contentColor = TechCyan
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, TechCyan.copy(alpha = 0.5f))
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Save,
+                            contentDescription = "Save Presets",
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "SAVE PRESETS",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 // Telemetry status preview or console expander
                 Box(
                     modifier = Modifier
@@ -428,7 +517,7 @@ fun MainScreen(viewModel: MainViewModel, modifier: Modifier = Modifier) {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "SENDING COMMAND: ${viewModel.resolveCommand(activeMovement)} | PWM: $currentSpeed",
+                        text = "SENDING COMMAND: ${viewModel.resolveCommand(activeMovement)} | PWM: $currentSpeed | TRIM: $steeringTrim",
                         color = Color(0x26FFFFFF),
                         fontSize = 9.sp,
                         fontFamily = FontFamily.Monospace,
